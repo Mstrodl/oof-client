@@ -1,34 +1,64 @@
-let Websocket = require("ws")
-let Player = require("./Player")
+const Websocket = require("ws")
+const Player = require("./Player")
 
 /**
-* Represents an oof voice node
-* @arg {Object} [opts] Node options
-* @arg {String="localhost"} [opts.address] Hostname to connect ot the oof server at
-* @arg {String="8081"} [opts.port] Port to connect to the oof server at
-* @arg {String="us"} [opts.region] Region the server is located in
-* @arg {OofClient} master OofClient that instantiated this node
-* @prop {String} address Hostname of the oof server
-* @prop {Port} port Port of the oof server
-* @prop {String} region Region the node is located in
-* @prop {Object} guilds Guilds the voice node is currently connected to
-* @prop {Websocket} ws Websocket client connected to the oof server
-* @prop {OofClient} master OofClient that instantiated this node
-* @prop {Object} [stats] Statistics of the oof client
-* @prop {Number} [stats.cores] Cores the oof server's host has
-* @prop {Number} [stats.load] Load value of the oof server's host
-*/
-module.exports = class Node {
+ * Represents an oof voice node
+ * 
+ * @class Node
+ */
+class Node {
+  /**
+    * @arg {Object} [opts] Node options
+    * @arg {String="localhost"} [opts.address] Hostname to connect ot the oof server at
+    * @arg {String="8081"} [opts.port] Port to connect to the oof server at
+    * @arg {String="us"} [opts.region] Region the server is located in
+    * @arg {OofClient} master OofClient that instantiated this node
+    */
   constructor(opts, master) {
+    /**
+     * Hostname of the oof server
+     * @type {String}
+     */
     this.address = opts.address || "localhost"
+
+    /**
+     * Port of the oof server
+     * @type {String}
+     */
     this.port = opts.port || "8081"
+
+    /**
+     * Region the node is located in
+     * @type {String}
+     */
     this.region = opts.region || "us"
+
+    /**
+     * Guilds the voice node is currently connected to
+     * @type {Object.<string, Client>}
+     */
     this.guilds = {}
+
+    /**
+     * Websocket clients connected to the oof server
+     * @type {Websocket}
+     */
     this.ws = new Websocket(`ws://${this.address}:${this.port}`)
     this.ws.on("connection", () => this.ready = true)
+
+    /**
+     * OofClient that instantiated this node
+     * @type {OofClient}
+     */
     this.master = master
     this.master.client.on("self.voiceServer", this.onServerUpdate.bind(this))
     this.master.client.on("self.voiceStateUpdate", this.onVoiceStateUpdate.bind(this))
+    /**
+     * The statistics of the OofClient
+     * @type {Object.<string, number>}
+     * @property {number} cores Cores the oof server's host has
+     * @property {number} load Load value of the oof server's host
+     */
     this.stats = {
       cores: 1,
       load: 0
@@ -104,3 +134,5 @@ module.exports = class Node {
     return this.guilds[channel.guild.id]
   }
 }
+
+module.exports = Node;

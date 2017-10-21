@@ -1,23 +1,71 @@
-let EventEmitter = require("events").EventEmitter
+const EventEmitter = require("events").EventEmitter
 
 /**
- * Represents a Player system
- * @extends EventEmitter
- * @prop {VoiceChannel} channel The voice channel the player is playing to
- * @prop {Guild} guild The guild the voice channel is in
- * @prop {Node} node The node the player is broadcasting on
- * @prop {Boolean} ready Whether or not the node is connected to the voice channel
- * @prop {Object} nowPlaying The currently playing track's info
- * @prop {Boolean} destroyed Whether or not this instance has been destroyed
+ * Represents a player system
+ * 
+ * @class Player
+ * @extends {EventEmitter}
  */
-module.exports = class Player extends EventEmitter {
+class Player extends EventEmitter {
+  /**
+   * @param {VoiceChannel} channel The voice channel the player is playing to
+   * @param {Node} node The node the player is broadcasting on
+   */
   constructor(channel, node) { 
     super()
+
+    /**
+     * The voice channel the player is playing to
+     * @type {VoiceChannel}
+     */
     this.channel = channel
-    this.guild = channel.guild
+
+    /**
+     * The node the player is broadcasting on
+     * @type {Node}
+     */
     this.node = node
+
+    /**
+     * Whether or not the node is connected to the voice channel
+     * @type {boolean}
+     */
     this.ready = false
+    
+    /**
+     * The currently playing track's info, or null when there is no currently playing track.
+     * @type {Object | null}
+     */
+    this.nowPlaying = null;
+    
+    /**
+     * Whether or not this instance has been destroyed
+     * @type {boolean}
+     */
     this.destroyed = false
+  }
+
+  /**
+   * The guild the voice channel is in
+   * @type {Guild}
+   * 
+   * @readonly
+   */
+  get guild() {
+    return this.channel.guild;
+  }
+
+  /**
+   * Wrapper for the send function
+   * 
+   * @param {String} opcode The opcode of this websocket message
+   * @param {any} payload The data to send
+   */
+  send(opcode, payload) {
+    return this.node.send({
+      op: opcode,
+      d: payload
+    })
   }
 
   /**
@@ -26,13 +74,10 @@ module.exports = class Player extends EventEmitter {
    * @arg {*} data The voiceStateUpdate packet from Discord
    */
   stateUpdate(data) {
-    this.node.send({
-      op: "voiceStateUpdate",
-      d: {
-        guildId: this.guild.id,
-        channelId: this.channel.id,
-        session_id: data.session_id
-      }
+    this.send("voiceStateUpdate", {
+      guildId: this.guild.id,
+      channelId: this.channel.id,
+      session_id: data.session_id
     })
   }
 
@@ -42,15 +87,12 @@ module.exports = class Player extends EventEmitter {
    * @arg {*} data The voiceServerUpdated packet from Discord
    */
   serverUpdate(data) {
-    this.node.send({
-      op: "voiceServerUpdate",
-      d: {
-        guildId: this.guild.id,
-        channelId: this.channel.id,
-        endpoint: data.endpoint,
-        guild_id: data.guild_id,
-        token: data.token
-      }
+    this.send("voiceServerUpdate", {
+      guildId: this.guild.id,
+      channelId: this.channel.id,
+      endpoint: data.endpoint,
+      guild_id: data.guild_id,
+      token: data.token
     })
   }
 
@@ -60,13 +102,10 @@ module.exports = class Player extends EventEmitter {
    */
   connect() {
     return new Promise((resolve, reject) => {
-      this.node.send({
-        op: "join",
-        d: {
-          channelId: this.channel.id,
-          guildId: this.guild.id,
-          userId: this.channel.client.user.id
-        }
+      this.send("join", {
+        channelId: this.channel.id,
+        guildId: this.guild.id,
+        userId: this.channel.client.user.id
       })
       this.once("connected", () => {
         console.log("Got connected")
@@ -77,19 +116,16 @@ module.exports = class Player extends EventEmitter {
 
   /**
    * Plays a given track
-   * @arg {Object} [track] Track to be played
-   * @arg {Object} [track.url] URL of the track to be played
+   * @arg {Object.<string, string>} [track] Track to be played
+   * @arg {String} [track.url] URL of the track to be played
    * @returns {Promise} Resolves once the track starts playing
    */
   play(track) {
     return new Promise((resolve, reject) => {
-      this.node.send({
-        op: "play",
-        d: {
-          track: track,
-          guildId: this.guild.id,
-          channelId: this.channel.id
-        }
+      this.send("play", {
+        track: track,
+        guildId: this.guild.id,
+        channelId: this.channel.id
       })
       this.once("playing", () => resolve())
     })
@@ -101,12 +137,9 @@ module.exports = class Player extends EventEmitter {
    */
   stop() {
     return new Promise((resolve, reject) => {
-      this.node.send({
-        op: "stop",
-        d: {
-          guildId: this.guild.id,
-          channelId: this.channel.id
-        }
+      this.send("stop", {
+        guildId: this.guild.id,
+        channelId: this.channel.id
       })
       this.once("end", () => resolve())
     })
@@ -118,12 +151,9 @@ module.exports = class Player extends EventEmitter {
    */
   leave() {
     return new Promise((resolve, reject) => {
-      this.node.send({
-        op: "leave",
-        d: {
-          guildId: this.guild.id,
-          channelId: this.channel.id
-        }
+      this.send("leave", {
+        guildId: this.guild.id,
+        channelId: this.channel.id
       })
       this.once("disconnected", () => {
         resolve()
@@ -137,13 +167,10 @@ module.exports = class Player extends EventEmitter {
    */
   seek(position) {
     // Not implemented yet... D:
-    return this.node.send({
-      op: "seek",
-      d: {
-        position,
-        guildId: this.guild.id,
-        channelId: this.channel.id
-      }
+    return this.send("seek", {
+      position,
+      guildId: this.guild.id,
+      channelId: this.channel.id
     })
   }
 
@@ -152,13 +179,10 @@ module.exports = class Player extends EventEmitter {
    * @arg {Number} volume Volume to be changed to
    */
   volume(volume) {
-    return this.node.send({
-      op: "volume",
-      d: {
-        volume,
-        guildId: this.guild.id,
-        channelId: this.channel.id
-      }
+    return this.send("volume", {
+      volume,
+      guildId: this.guild.id,
+      channelId: this.channel.id
     })
   }
 
@@ -167,13 +191,10 @@ module.exports = class Player extends EventEmitter {
    * @arg {Boolean=} pause If set, only changes to the given state
    */
   pause(pause) {
-    return this.node.send({ 
-      op: "pause",
-      d: {
-        pause: pause,
-        guildId: this.guild.id,
-        channelId: this.channel.id
-      }
+    return this.send("pause", {
+      pause,
+      guildId: this.guild.id,
+      channelId: this.channel.id
     })
   }
 
@@ -233,3 +254,5 @@ module.exports = class Player extends EventEmitter {
     }
   }
 }
+
+module.export = Player;
