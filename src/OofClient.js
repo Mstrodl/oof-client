@@ -29,7 +29,13 @@ module.exports = class OofClient {
    */
   async join(channel) {
     let node = this._findOptimalNode(channel.guild.region)
-    return this.guilds[channel.guild.id] = await node.createPlayer(channel)
+    this.guilds[channel.guild.id] = await node.createPlayer(channel)
+    this.guilds[channel.guild.id].once("disconnected", () => {
+      console.log("Node disconnect")
+      delete this.guilds[channel.guild.id]
+      this.guilds[channel.guild.id] = null
+    })
+    return this.guilds[channel.guild.id]
   }
 
   /**

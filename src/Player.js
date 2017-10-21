@@ -8,6 +8,7 @@ let EventEmitter = require("events").EventEmitter
  * @prop {Node} node The node the player is broadcasting on
  * @prop {Boolean} ready Whether or not the node is connected to the voice channel
  * @prop {Object} nowPlaying The currently playing track's info
+ * @prop {Boolean} destroyed Whether or not this instance has been destroyed
  */
 module.exports = class Player extends EventEmitter {
   constructor(channel, node) { 
@@ -16,6 +17,7 @@ module.exports = class Player extends EventEmitter {
     this.guild = channel.guild
     this.node = node
     this.ready = false
+    this.destroyed = false
   }
 
   /**
@@ -138,7 +140,9 @@ module.exports = class Player extends EventEmitter {
     return this.node.send({
       op: "seek",
       d: {
-        position
+        position,
+        guildId: this.guild.id,
+        channelId: this.channel.id
       }
     })
   }
@@ -151,7 +155,9 @@ module.exports = class Player extends EventEmitter {
     return this.node.send({
       op: "volume",
       d: {
-        volume
+        volume,
+        guildId: this.guild.id,
+        channelId: this.channel.id
       }
     })
   }
@@ -164,9 +170,21 @@ module.exports = class Player extends EventEmitter {
     return this.node.send({ 
       op: "pause",
       d: {
-        pause: pause
+        pause: pause,
+        guildId: this.guild.id,
+        channelId: this.channel.id
       }
     })
+  }
+
+  /**
+   * Destroys the Player object
+   */
+  destroy() {
+    for(let key of Object.keys(this)) {
+      delete this[key]
+    }
+    this.destroyed = true
   }
 
   /**

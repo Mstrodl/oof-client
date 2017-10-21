@@ -71,9 +71,14 @@ module.exports = class Node {
   onMessage(data) {
     let message = JSON.parse(data)
     console.log(`Got message from node ${data}`)
-    if(message.d.guildId && message.d.channelId)
+    if(message.d.guildId && message.d.channelId) {
       this.guilds[message.d.guildId].onMessage(message)
-    else {
+      if(message.op == "disconnected") {
+        this.guilds[message.d.guildId].destroy()
+        delete this.guilds[message.d.guildId]
+        this.guilds[message.d.guildId] = null
+      }
+    } else {
       switch(message.op) {
       case "sendWS": {
         this.master.client.ws.send(message.d)
